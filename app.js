@@ -529,3 +529,14 @@ function slugify(value) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      await navigator.serviceWorker.register("./service-worker.js");
+      console.log("Service worker registered.");
+    } catch (error) {
+      console.warn("Service worker registration failed:", error);
+    }
+  });
+}
