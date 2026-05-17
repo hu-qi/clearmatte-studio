@@ -3,6 +3,17 @@ import { AutoModel, AutoProcessor, RawImage, env } from "https://cdn.jsdelivr.ne
 const MODEL_ID = "studioludens/birefnet-lite-512";
 const MODEL_REVISION = "4a3c40c36c94093cc1e724d9ea428b8fa4b57dc7";
 const MAX_CANVAS_EDGE = 4096;
+const MODEL_HOSTS = {
+  hub: {
+    host: "https://huggingface.co/",
+    label: "HF Hub",
+  },
+  mirror: {
+    host: "https://hf-mirror.com/",
+    label: "CN mirror",
+  },
+};
+const MIRROR_QUERY_PARAM = "mirror";
 
 const els = {
   fileInput: document.querySelector("#fileInput"),
@@ -45,6 +56,7 @@ const state = {
   model: null,
   processor: null,
   device: "auto",
+  modelHostLabel: MODEL_HOSTS.hub.label,
   isProcessing: false,
   compare: false,
   compareX: 0.5,
@@ -59,8 +71,56 @@ setStatus("Waiting for an image", 0);
 function configureRuntime() {
   env.allowLocalModels = false;
   env.allowRemoteModels = true;
+  const modelHost = chooseModelHost();
+  state.modelHostLabel = modelHost.label;
+  env.remoteHost = modelHost.host;
+  els.runtimeDetail.textContent = `Auto · ${modelHost.label}`;
   if (env.backends?.onnx?.wasm) {
     env.backends.onnx.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 4);
+  }
+}
+
+function chooseModelHost() {
+  const override = getMirrorOverride();
+  if (override === "mirror") return MODEL_HOSTS.mirror;
+  if (override === "hub") return MODEL_HOSTS.hub;
+  return isLikelyMainlandChinaUser() ? MODEL_HOSTS.mirror : MODEL_HOSTS.hub;
+}
+
+function getMirrorOverride() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get(MIRROR_QUERY_PARAM);
+  if (!value) return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "cn", "china", "mirror", "hf-mirror"].includes(normalized)) {
+    return "mirror";
+  }
+  if (["0", "false", "no", "global", "hub", "huggingface"].includes(normalized)) {
+    return "hub";
+  }
+  return null;
+}
+
+function isLikelyMainlandChinaUser() {
+  const timeZone = getBrowserTimeZone();
+  if (["Asia/Shanghai", "Asia/Chongqing", "Asia/Harbin", "Asia/Urumqi"].includes(timeZone)) {
+    return true;
+  }
+
+  const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+  return languages.some((language) => {
+    if (typeof language !== "string") return false;
+    const normalized = language.toLowerCase();
+    return normalized === "zh-cn" || normalized === "zh-hans" || normalized.startsWith("zh-hans-");
+  });
+}
+
+function getBrowserTimeZone() {
+  try {
+    return globalThis.Intl?.DateTimeFormat?.().resolvedOptions().timeZone || "";
+  } catch {
+    return "";
   }
 }
 
@@ -475,7 +535,7 @@ function setStatus(message, progress, isError = false) {
 }
 
 function updateRuntime(device, dtype) {
-  els.runtimeDetail.textContent = `${device.toUpperCase()} ${dtype.toUpperCase()}`;
+  els.runtimeDetail.textContent = `${device.toUpperCase()} ${dtype.toUpperCase()} · ${state.modelHostLabel}`;
   els.runtimePill.textContent = device === "webgpu" ? "WebGPU" : "WASM";
 }
 

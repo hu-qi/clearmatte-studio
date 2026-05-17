@@ -1,43 +1,38 @@
 # ClearMatte Studio
 
-ClearMatte Studio is a static browser app for commercial-friendly background removal. It runs client-side with Transformers.js and the MIT-licensed `studioludens/birefnet-lite-512` ONNX model.
+[中文说明](./README-zh.md)
 
-## Run locally
+ClearMatte Studio is a static browser app for background removal. It runs client-side with Transformers.js and the `studioludens/birefnet-lite-512` ONNX model.
+
+![ClearMatte Studio demo](./imgs/Crystal-demo.png)
+
+## Features
+
+- Upload PNG, JPEG, or WebP images.
+- Run alpha matting locally in the browser.
+- Preview transparent results on grid, white, dark, or custom backgrounds.
+- Adjust cutoff, softness, and cleanup before export.
+- Export transparent PNG or a flattened color-background PNG.
+
+## Run Locally
 
 ```bash
 python3 -m http.server 5173
 ```
 
-Then open `http://localhost:5173`.
+Open `http://localhost:5173`.
 
-WebGPU requires a secure context; `localhost` is accepted by modern browsers. If WebGPU is unavailable, the app falls back to WASM.
+WebGPU requires a secure context. `localhost` works in modern browsers; unsupported browsers fall back to WASM.
 
-## Product scope
+## Model Downloads
 
-- Upload PNG, JPEG, or WebP images.
-- Run client-side alpha matting with no application server.
-- Preview on grid, white, dark, or custom color backgrounds.
-- Adjust cutoff, softness, and cleanup.
-- Export transparent PNG or a flattened color-background PNG.
+Model files load from the Hugging Face Hub by default. Mainland China visitors are automatically routed to `hf-mirror.com` based on browser timezone or language.
 
-The default model is suitable for a commercial product because the model repository declares `license: mit`. Keep the third-party notices with any distribution, and re-check upstream model licenses before changing models.
+Testing overrides:
 
-## Deployment
+- `?mirror=1` forces the China mirror.
+- `?mirror=0` forces the Hugging Face Hub.
 
-This app can be deployed as static files. Host `index.html`, `styles.css`, `app.js`, `vercel.json`, and `THIRD_PARTY_NOTICES.md` behind HTTPS so WebGPU can run outside localhost.
+## Deploy
 
-### Vercel
-
-Vercel is a good fit for this project:
-
-- It serves static files without a build step.
-- HTTPS is enabled by default, which is required for WebGPU outside localhost.
-- GitHub integration gives preview deployments for every branch or pull request.
-- The app has no server-side runtime cost because inference runs in the browser.
-
-Suggested Vercel settings:
-
-- Framework Preset: `Other`
-- Build Command: leave empty
-- Output Directory: `.`
-- Install Command: leave empty
+Deploy the repository as static files behind HTTPS. No build step or server runtime is required.
