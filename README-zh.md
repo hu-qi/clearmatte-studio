@@ -26,7 +26,7 @@ WebGPU 需要安全上下文；现代浏览器会接受 `localhost`。如果 Web
 
 ## 模型下载
 
-模型文件默认从 Hugging Face Hub 下载。中国大陆访问会根据浏览器时区或语言自动切换到 `hf-mirror.com` 镜像。
+模型文件默认从 Hugging Face Hub 下载。中国大陆访问会根据浏览器时区或语言自动切换到浏览器兼容的 `alpha.hf-mirror.com` 镜像。
 
 测试时可以手动覆盖：
 

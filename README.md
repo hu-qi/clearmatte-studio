@@ -26,7 +26,7 @@ WebGPU requires a secure context. `localhost` works in modern browsers; unsuppor
 
 ## Model Downloads
 
-Model files load from the Hugging Face Hub by default. Mainland China visitors are automatically routed to `hf-mirror.com` based on browser timezone or language.
+Model files load from the Hugging Face Hub by default. Mainland China visitors are automatically routed to the browser-compatible `alpha.hf-mirror.com` mirror based on browser timezone or language.
 
 Testing overrides:
 

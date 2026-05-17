@@ -11,7 +11,7 @@ const MODEL_HOSTS = {
   },
   mirror: {
     key: "mirror",
-    host: "https://hf-mirror.com/",
+    host: "https://alpha.hf-mirror.com/",
     label: "CN mirror",
   },
 };
