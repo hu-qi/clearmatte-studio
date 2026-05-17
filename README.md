@@ -26,11 +26,23 @@ WebGPU requires a secure context. `localhost` works in modern browsers; unsuppor
 
 ## Model Downloads
 
-Model files load from the Hugging Face Hub by default. Mainland China visitors are automatically routed to the browser-compatible `alpha.hf-mirror.com` mirror based on browser timezone or language.
+The app first tries to load the model from this same-origin local directory:
+
+```text
+models/studioludens/birefnet-lite-512/
+```
+
+Download the Hugging Face repo `studioludens/birefnet-lite-512` into that directory to serve the model from your own site. This avoids Hugging Face or mirror access from the browser and bypasses third-party CORS limits. The local model directory is ignored by Git; upload it as static large files or object-storage assets when deploying.
+
+If the local directory is not available, the app falls back to the Hugging Face Hub. Mainland China visitors are automatically routed to the local model directory first, treating your same-origin hosted files as the mirror.
 
 Testing overrides:
 
-- `?mirror=1` forces the China mirror.
+- `?model=local` forces local-only model loading.
+- `?model=remote` skips local loading and uses the Hugging Face Hub.
+- `?model=hub` forces the Hugging Face Hub.
+- `?model=mirror` forces the local model mirror.
+- `?mirror=1` forces the local model mirror.
 - `?mirror=0` forces the Hugging Face Hub.
 
 ## Deploy

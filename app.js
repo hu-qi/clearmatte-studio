@@ -2,20 +2,21 @@ import { AutoModel, AutoProcessor, RawImage, env } from "https://cdn.jsdelivr.ne
 
 const MODEL_ID = "studioludens/birefnet-lite-512";
 const MODEL_REVISION = "4a3c40c36c94093cc1e724d9ea428b8fa4b57dc7";
+const LOCAL_MODEL_ROOT = "./models/";
 const MAX_CANVAS_EDGE = 4096;
 const MODEL_HOSTS = {
+  local: {
+    key: "local",
+    label: "Local model",
+  },
   hub: {
     key: "hub",
     host: "https://huggingface.co/",
     label: "HF Hub",
   },
-  mirror: {
-    key: "mirror",
-    host: "https://alpha.hf-mirror.com/",
-    label: "CN mirror",
-  },
 };
 const MIRROR_QUERY_PARAM = "mirror";
+const MODEL_QUERY_PARAM = "model";
 
 const els = {
   fileInput: document.querySelector("#fileInput"),
@@ -71,9 +72,8 @@ setRangeOutputs();
 setStatus("Waiting for an image", 0);
 
 function configureRuntime() {
-  env.allowLocalModels = false;
-  env.allowRemoteModels = true;
-  const modelHost = chooseModelHost();
+  env.localModelPath = LOCAL_MODEL_ROOT;
+  const modelHost = chooseInitialModelHost();
   applyModelHost(modelHost);
   els.runtimeDetail.textContent = `Auto · ${state.modelHostLabel}`;
   if (env.backends?.onnx?.wasm) {
@@ -83,14 +83,43 @@ function configureRuntime() {
 
 function applyModelHost(modelHost) {
   state.modelHostLabel = modelHost.label;
+  if (modelHost.key === "local") {
+    env.localModelPath = LOCAL_MODEL_ROOT;
+    env.allowLocalModels = true;
+    env.allowRemoteModels = false;
+    return;
+  }
+
+  env.allowLocalModels = false;
+  env.allowRemoteModels = true;
   env.remoteHost = modelHost.host;
 }
 
-function chooseModelHost() {
-  const override = getMirrorOverride();
-  if (override === "mirror") return MODEL_HOSTS.mirror;
+function chooseInitialModelHost() {
+  const override = getModelOverride();
+  if (override === "local") return MODEL_HOSTS.local;
   if (override === "hub") return MODEL_HOSTS.hub;
-  return isLikelyMainlandChinaUser() ? MODEL_HOSTS.mirror : MODEL_HOSTS.hub;
+  if (override === "mirror") return MODEL_HOSTS.local;
+  return MODEL_HOSTS.local;
+}
+
+function chooseRemoteModelHost() {
+  const override = getMirrorOverride();
+  if (override === "hub") return MODEL_HOSTS.hub;
+  return MODEL_HOSTS.hub;
+}
+
+function getModelOverride() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get(MODEL_QUERY_PARAM);
+  if (!value) return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (["local", "offline", "bundled"].includes(normalized)) return "local";
+  if (["remote", "online", "auto"].includes(normalized)) return "remote";
+  if (["hub", "huggingface", "hf"].includes(normalized)) return "hub";
+  if (["mirror", "cn", "china", "hf-mirror"].includes(normalized)) return "mirror";
+  return null;
 }
 
 function getMirrorOverride() {
@@ -295,12 +324,16 @@ async function ensureModel() {
         const loadOptions = {
           device: attempt.device,
           dtype: attempt.dtype,
-          revision: MODEL_REVISION,
           progress_callback: reportModelProgress,
         };
+        const processorOptions = {};
+        if (modelHost.key !== "local") {
+          loadOptions.revision = MODEL_REVISION;
+          processorOptions.revision = MODEL_REVISION;
+        }
         const [model, processor] = await Promise.all([
           AutoModel.from_pretrained(MODEL_ID, loadOptions),
-          AutoProcessor.from_pretrained(MODEL_ID, { revision: MODEL_REVISION }),
+          AutoProcessor.from_pretrained(MODEL_ID, processorOptions),
         ]);
         state.model = model;
         state.processor = processor;
@@ -317,13 +350,19 @@ async function ensureModel() {
 }
 
 function getModelHostAttempts() {
+  const modelOverride = getModelOverride();
+  if (modelOverride === "local") return [MODEL_HOSTS.local];
+  if (modelOverride === "hub") return [MODEL_HOSTS.hub];
+  if (modelOverride === "mirror") return [MODEL_HOSTS.local];
+
   const override = getMirrorOverride();
-  if (override === "mirror") return [MODEL_HOSTS.mirror];
+  if (override === "mirror") return [MODEL_HOSTS.local];
   if (override === "hub") return [MODEL_HOSTS.hub];
 
-  const primary = chooseModelHost();
-  const fallback = primary.key === "mirror" ? MODEL_HOSTS.hub : MODEL_HOSTS.mirror;
-  return [primary, fallback];
+  if (isLikelyMainlandChinaUser()) return [MODEL_HOSTS.local, MODEL_HOSTS.hub];
+
+  const remoteAttempts = [chooseRemoteModelHost()];
+  return modelOverride === "remote" ? remoteAttempts : [MODEL_HOSTS.local, ...remoteAttempts];
 }
 
 function reportModelProgress(progress) {

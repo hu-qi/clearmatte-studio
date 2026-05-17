@@ -26,11 +26,23 @@ WebGPU 需要安全上下文；现代浏览器会接受 `localhost`。如果 Web
 
 ## 模型下载
 
-模型文件默认从 Hugging Face Hub 下载。中国大陆访问会根据浏览器时区或语言自动切换到浏览器兼容的 `alpha.hf-mirror.com` 镜像。
+应用会优先从同域本地目录加载模型：
+
+```text
+models/studioludens/birefnet-lite-512/
+```
+
+把 Hugging Face 仓库 `studioludens/birefnet-lite-512` 的文件下载到这个目录后，线上浏览器会直接从你的站点加载模型，不需要访问 Hugging Face 或镜像站，也不会遇到跨域限制。本地模型目录已加入 `.gitignore`，建议部署时作为静态大文件或对象存储产物上传。
+
+如果本地目录不存在，应用会回退到 Hugging Face Hub。中国大陆访问会根据浏览器时区或语言优先使用本地模型目录，也就是把站点自己托管的模型当作镜像源。
 
 测试时可以手动覆盖：
 
-- `?mirror=1` 强制使用中国区镜像。
+- `?model=local` 强制只使用本地模型。
+- `?model=remote` 跳过本地模型，使用 Hugging Face Hub。
+- `?model=hub` 强制使用 Hugging Face Hub。
+- `?model=mirror` 强制使用本地模型镜像。
+- `?mirror=1` 强制使用本地模型镜像。
 - `?mirror=0` 强制使用 Hugging Face Hub。
 
 ## 部署
