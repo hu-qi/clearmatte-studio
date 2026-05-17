@@ -5,10 +5,12 @@ const MODEL_REVISION = "4a3c40c36c94093cc1e724d9ea428b8fa4b57dc7";
 const MAX_CANVAS_EDGE = 4096;
 const MODEL_HOSTS = {
   hub: {
+    key: "hub",
     host: "https://huggingface.co/",
     label: "HF Hub",
   },
   mirror: {
+    key: "mirror",
     host: "https://hf-mirror.com/",
     label: "CN mirror",
   },
@@ -72,12 +74,16 @@ function configureRuntime() {
   env.allowLocalModels = false;
   env.allowRemoteModels = true;
   const modelHost = chooseModelHost();
-  state.modelHostLabel = modelHost.label;
-  env.remoteHost = modelHost.host;
-  els.runtimeDetail.textContent = `Auto · ${modelHost.label}`;
+  applyModelHost(modelHost);
+  els.runtimeDetail.textContent = `Auto · ${state.modelHostLabel}`;
   if (env.backends?.onnx?.wasm) {
     env.backends.onnx.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 4);
   }
+}
+
+function applyModelHost(modelHost) {
+  state.modelHostLabel = modelHost.label;
+  env.remoteHost = modelHost.host;
 }
 
 function chooseModelHost() {
@@ -270,40 +276,54 @@ async function ensureModel() {
   if (state.model && state.processor) return;
 
   const wantsWebGpu = Boolean(navigator.gpu);
-  const attempts = wantsWebGpu
+  const runtimeAttempts = wantsWebGpu
     ? [
         { device: "webgpu", dtype: "fp16" },
         { device: "wasm", dtype: "fp32" },
       ]
     : [{ device: "wasm", dtype: "fp32" }];
+  const hostAttempts = getModelHostAttempts();
 
   let lastError;
 
-  for (const attempt of attempts) {
-    try {
-      state.device = attempt.device;
-      updateRuntime(attempt.device, attempt.dtype);
-      const loadOptions = {
-        device: attempt.device,
-        dtype: attempt.dtype,
-        revision: MODEL_REVISION,
-        progress_callback: reportModelProgress,
-      };
-      const [model, processor] = await Promise.all([
-        AutoModel.from_pretrained(MODEL_ID, loadOptions),
-        AutoProcessor.from_pretrained(MODEL_ID, { revision: MODEL_REVISION }),
-      ]);
-      state.model = model;
-      state.processor = processor;
-      return;
-    } catch (error) {
-      lastError = error;
-      state.model = null;
-      state.processor = null;
+  for (const modelHost of hostAttempts) {
+    applyModelHost(modelHost);
+    for (const attempt of runtimeAttempts) {
+      try {
+        state.device = attempt.device;
+        updateRuntime(attempt.device, attempt.dtype);
+        const loadOptions = {
+          device: attempt.device,
+          dtype: attempt.dtype,
+          revision: MODEL_REVISION,
+          progress_callback: reportModelProgress,
+        };
+        const [model, processor] = await Promise.all([
+          AutoModel.from_pretrained(MODEL_ID, loadOptions),
+          AutoProcessor.from_pretrained(MODEL_ID, { revision: MODEL_REVISION }),
+        ]);
+        state.model = model;
+        state.processor = processor;
+        return;
+      } catch (error) {
+        lastError = error;
+        state.model = null;
+        state.processor = null;
+      }
     }
   }
 
   throw lastError || new Error("Model failed to load.");
+}
+
+function getModelHostAttempts() {
+  const override = getMirrorOverride();
+  if (override === "mirror") return [MODEL_HOSTS.mirror];
+  if (override === "hub") return [MODEL_HOSTS.hub];
+
+  const primary = chooseModelHost();
+  const fallback = primary.key === "mirror" ? MODEL_HOSTS.hub : MODEL_HOSTS.mirror;
+  return [primary, fallback];
 }
 
 function reportModelProgress(progress) {

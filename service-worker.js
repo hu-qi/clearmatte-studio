@@ -1,4 +1,4 @@
-const CACHE_NAME = "clearmatte-cache-v1";
+const CACHE_NAME = "clearmatte-cache-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,6 +15,7 @@ const ASSETS = [
   "./imgs/favicon_io/android-chrome-192x192.png",
   "./imgs/favicon_io/android-chrome-512x512.png",
 ];
+const NETWORK_FIRST_FILES = new Set(["/", "/index.html", "/app.js", "/styles.css"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -37,24 +38,49 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          if (!response || response.status !== 200 || response.type !== "basic") {
-            return response;
-          }
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
-          return response;
-        })
-        .catch(() => {
-          if (event.request.mode === "navigate") {
-            return caches.match("./offline.html");
-          }
-          return caches.match("./");
-        });
-    })
-  );
+  if (event.request.mode === "navigate" || shouldUseNetworkFirst(event.request)) {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
+  event.respondWith(cacheFirst(event.request));
 });
+
+function shouldUseNetworkFirst(request) {
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return false;
+  return NETWORK_FIRST_FILES.has(url.pathname);
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    await cacheResponse(request, response);
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    if (request.mode === "navigate") return caches.match("./offline.html");
+    return caches.match("./");
+  }
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(request);
+    await cacheResponse(request, response);
+    return response;
+  } catch {
+    if (request.mode === "navigate") return caches.match("./offline.html");
+    return caches.match("./");
+  }
+}
+
+async function cacheResponse(request, response) {
+  if (!response || response.status !== 200 || response.type !== "basic") return;
+  const cache = await caches.open(CACHE_NAME);
+  await cache.put(request, response.clone());
+}
