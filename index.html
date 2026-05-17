@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="ClearMatte Studio is a browser-based background removal workspace that runs client-side AI matting."
+    />
+    <title>ClearMatte Studio</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://huggingface.co" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand" aria-label="ClearMatte Studio">
+          <span class="brand-mark" aria-hidden="true">CM</span>
+          <span class="brand-copy">
+            <strong>ClearMatte</strong>
+            <span>Studio</span>
+          </span>
+        </div>
+
+        <div class="topbar-actions">
+          <span class="runtime-pill" id="runtimePill">Ready</span>
+          <button class="ghost-button" id="resetButton" type="button" disabled>Reset</button>
+          <button class="primary-button" id="exportButton" type="button" disabled>
+            Export PNG
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="stage-area" aria-label="Image workspace">
+          <div class="stage-toolbar" aria-label="Preview controls">
+            <div class="segmented" role="tablist" aria-label="Preview background">
+              <button class="segment active" type="button" data-bg="checker">Grid</button>
+              <button class="segment" type="button" data-bg="white">White</button>
+              <button class="segment" type="button" data-bg="charcoal">Dark</button>
+              <button class="segment" type="button" data-bg="color">Color</button>
+            </div>
+            <label class="swatch-label" aria-label="Custom background color">
+              <input id="backgroundColor" type="color" value="#62c9aa" />
+            </label>
+            <button class="tool-button" id="compareButton" type="button" disabled>Compare</button>
+          </div>
+
+          <div class="stage" id="dropZone">
+            <div class="canvas-frame checker" id="canvasFrame">
+              <canvas id="previewCanvas" width="1280" height="960"></canvas>
+              <div class="empty-state" id="emptyState">
+                <span class="empty-icon" aria-hidden="true"></span>
+                <strong>Drop Image</strong>
+                <span>PNG, JPEG, WebP</span>
+              </div>
+              <div class="compare-handle hidden" id="compareHandle" aria-hidden="true"></div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="control-panel" aria-label="Controls">
+          <label class="upload-control" for="fileInput">
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" />
+            <span>Choose Image</span>
+          </label>
+
+          <button class="primary-button wide" id="processButton" type="button" disabled>
+            Remove Background
+          </button>
+
+          <div class="status-panel" aria-live="polite">
+            <div class="status-row">
+              <span id="statusText">Waiting for an image</span>
+              <span id="statusDetail">0%</span>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <span class="progress-fill" id="progressFill"></span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="control-heading">
+              <span>Matte</span>
+              <button class="mini-button" id="applyAdjustmentsButton" type="button" disabled>
+                Apply
+              </button>
+            </div>
+
+            <label class="range-row">
+              <span>Cutoff</span>
+              <input id="cutoffRange" type="range" min="0" max="100" value="42" />
+              <output id="cutoffValue">42</output>
+            </label>
+
+            <label class="range-row">
+              <span>Softness</span>
+              <input id="softnessRange" type="range" min="0" max="100" value="14" />
+              <output id="softnessValue">14</output>
+            </label>
+
+            <label class="range-row">
+              <span>Clean</span>
+              <input id="cleanRange" type="range" min="0" max="100" value="8" />
+              <output id="cleanValue">8</output>
+            </label>
+          </div>
+
+          <div class="control-group">
+            <div class="control-heading">
+              <span>Output</span>
+            </div>
+            <label class="select-row">
+              <span>Max Edge</span>
+              <select id="maxEdgeSelect">
+                <option value="2048">2048 px</option>
+                <option value="3072" selected>3072 px</option>
+                <option value="4096">4096 px</option>
+              </select>
+            </label>
+            <label class="toggle-row">
+              <input id="transparentToggle" type="checkbox" checked />
+              <span>Transparent PNG</span>
+            </label>
+          </div>
+
+          <div class="meta-panel">
+            <dl>
+              <div>
+                <dt>Model</dt>
+                <dd>BiRefNet lite 512</dd>
+              </div>
+              <div>
+                <dt>License</dt>
+                <dd>MIT</dd>
+              </div>
+              <div>
+                <dt>Runtime</dt>
+                <dd id="runtimeDetail">Auto</dd>
+              </div>
+            </dl>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
