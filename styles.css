@@ -64,27 +64,30 @@ button {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
   min-width: 0;
 }
 
 .brand-mark {
-  width: 42px;
+  display: block;
   height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  color: #fff;
-  background: #123f3a;
-  font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 0;
+  max-width: 240px;
+  object-fit: contain;
 }
 
 .brand-copy {
-  display: grid;
-  gap: 1px;
-  line-height: 1;
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .brand-copy strong {
